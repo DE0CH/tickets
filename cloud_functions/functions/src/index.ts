@@ -1,12 +1,17 @@
 import * as admin from "firebase-admin";
-import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
+import {
+  CallableRequest,
+  HttpsError,
+  onCall,
+} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
+import {defineSecret} from "firebase-functions/params";
 import https from "https";
 
 admin.initializeApp();
 
-const MAIL_API_URL = process.env.OX_MAIL_API_URL ?? "";
-const MAIL_API_TOKEN = process.env.OX_MAIL_API_TOKEN ?? "";
+const MAIL_API_URL = defineSecret("OX_MAIL_API_URL");
+const MAIL_API_TOKEN = defineSecret("OX_MAIL_API_TOKEN");
 const OX_EMAIL_RE = /@([A-Za-z0-9-]+\.)*ox\.ac\.uk$/i;
 
 type MailApiResponse = {
@@ -16,19 +21,21 @@ type MailApiResponse = {
 
 const requestMailCode = (email: string) =>
   new Promise<MailApiResponse>((resolve, reject) => {
-    if (!MAIL_API_URL || !MAIL_API_TOKEN) {
+    const mailApiUrl = MAIL_API_URL.value();
+    const mailApiToken = MAIL_API_TOKEN.value();
+    if (!mailApiUrl || !mailApiToken) {
       reject(new Error("Missing OX_MAIL_API_URL or OX_MAIL_API_TOKEN."));
       return;
     }
 
-    const url = new URL("/send_code", MAIL_API_URL);
-    const body = JSON.stringify({ email });
+    const url = new URL("/send_code", mailApiUrl);
+    const body = JSON.stringify({email});
     const options: https.RequestOptions = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Content-Length": Buffer.byteLength(body),
-        Authorization: `Bearer ${MAIL_API_TOKEN}`,
+        "Authorization": `Bearer ${mailApiToken}`,
       },
     };
 
@@ -57,9 +64,18 @@ const requestMailCode = (email: string) =>
   });
 
 export const requestOxfordCode = onCall(
+  {
+    secrets: [MAIL_API_URL, MAIL_API_TOKEN],
+  },
   async (request: CallableRequest<{ email?: string }>) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Please log in first.");
+    }
+
+    const allowedEmail = "chendeyao000@gmail.com";
+    const requesterEmail = request.auth.token.email ?? "";
+    if (requesterEmail.toLowerCase() !== allowedEmail) {
+      throw new HttpsError("permission-denied", "Not authorized.");
     }
 
     const oxEmail = request.data?.email ?? "";
@@ -86,10 +102,74 @@ export const requestOxfordCode = onCall(
         expiresAt: Date.now() + 15 * 60 * 1000,
       });
 
-      return { success: true };
+      return {success: true};
     } catch (error) {
       logger.error("Mail API Error:", error);
       throw new HttpsError("internal", "Failed to send email.");
     }
+  },
+);
+
+export const verifyOxfordCode = onCall(
+  async (request: CallableRequest<{ code?: string }>) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Please log in first.");
+    }
+
+    const allowedEmail = "chendeyao000@gmail.com";
+    const requesterEmail = request.auth.token.email ?? "";
+    if (requesterEmail.toLowerCase() !== allowedEmail) {
+      throw new HttpsError("permission-denied", "Not authorized.");
+    }
+
+    const code = request.data?.code?.trim() ?? "";
+    if (!code) {
+      throw new HttpsError("invalid-argument", "Code is required.");
+    }
+
+    const uid = request.auth.uid;
+    const codeRef = admin.firestore().collection("verificationCodes").doc(uid);
+    const codeSnap = await codeRef.get();
+    if (!codeSnap.exists) {
+      throw new HttpsError("failed-precondition", "No code found.");
+    }
+
+    const data = codeSnap.data() ?? {};
+    const storedCode = String(data.code ?? "");
+    const expiresAt = Number(data.expiresAt ?? 0);
+    if (!storedCode) {
+      throw new HttpsError("failed-precondition", "No code found.");
+    }
+    if (expiresAt && Date.now() > expiresAt) {
+      throw new HttpsError("deadline-exceeded", "Code expired.");
+    }
+    if (storedCode !== code) {
+      const attempts = Number(data.attempts ?? 0) + 1;
+      await codeRef.set(
+        {
+          attempts: attempts,
+        },
+        {merge: true},
+      );
+      if (attempts >= 5) {
+        throw new HttpsError(
+          "permission-denied",
+          "Too many attempts. Request a new code.",
+        );
+      }
+      throw new HttpsError("permission-denied", "Invalid code.");
+    }
+
+    await admin.firestore().collection("users").doc(uid).set(
+      {
+        oxford_email_verified: true,
+        oxford_email_verified_at:
+          admin.firestore.FieldValue.serverTimestamp(),
+        oxford_email: data.email ?? null,
+      },
+      {merge: true},
+    );
+
+    return {success: true};
   },
 );
