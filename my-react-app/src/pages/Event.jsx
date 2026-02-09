@@ -16,10 +16,13 @@ function Event() {
 
   const formatTimestamp = (value) => {
     if (!value) return '—'
-    if (typeof value.toDate === 'function') {
-      return value.toDate().toLocaleString()
-    }
-    return '—'
+    const date =
+      typeof value.toDate === 'function' ? value.toDate() : value instanceof Date ? value : null
+    if (!date) return '—'
+    return new Intl.DateTimeFormat('en-GB', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(date)
   }
 
   const eventRef = useMemo(
@@ -79,7 +82,6 @@ function Event() {
           id: docSnap.id,
           ...docSnap.data(),
         }))
-        console.log('Asks update:', asksData)
         setAsks(asksData)
         setLoadingAsks(false)
       },
@@ -96,7 +98,6 @@ function Event() {
           id: docSnap.id,
           ...docSnap.data(),
         }))
-        console.log('Bids update:', bidsData)
         setBids(bidsData)
         setLoadingBids(false)
       },
@@ -136,10 +137,16 @@ function Event() {
       {!loadingEvent && !loadingAsks && !loadingBids && !error && (
         <div className="d-flex flex-column gap-3">
           <div className="d-flex flex-wrap gap-2">
-            <Link className="btn btn-dark btn-sm" to={`/events/${eventId}/sell`}>
+            <Link
+              className="btn btn-outline-dark btn-sm"
+              to={`/events/${eventId}/sell`}
+            >
               Sell ticket
             </Link>
-            <Link className="btn btn-outline-dark btn-sm" to={`/events/${eventId}/bid`}>
+            <Link
+              className="btn btn-outline-dark btn-sm"
+              to={`/events/${eventId}/bid`}
+            >
               Place bid
             </Link>
           </div>

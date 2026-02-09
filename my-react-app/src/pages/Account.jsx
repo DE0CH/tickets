@@ -27,8 +27,10 @@ function Account() {
     preferredWhatsapp: '',
   })
   const [verificationEmail, setVerificationEmail] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
   const [saving, setSaving] = useState(false)
   const [requestingCode, setRequestingCode] = useState(false)
+  const [verifyingCode, setVerifyingCode] = useState(false)
   const [asks, setAsks] = useState([])
   const [bids, setBids] = useState([])
   const [loadingData, setLoadingData] = useState(false)
@@ -61,10 +63,13 @@ function Account() {
 
   const formatTimestamp = (value) => {
     if (!value) return '—'
-    if (typeof value.toDate === 'function') {
-      return value.toDate().toLocaleString()
-    }
-    return '—'
+    const date =
+      typeof value.toDate === 'function' ? value.toDate() : value instanceof Date ? value : null
+    if (!date) return '—'
+    return new Intl.DateTimeFormat('en-GB', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(date)
   }
 
   useEffect(() => {
@@ -84,6 +89,7 @@ function Account() {
         preferredWhatsapp: '',
       })
       setVerificationEmail('')
+      setVerificationCode('')
       setAsks([])
       setBids([])
       return
@@ -113,6 +119,7 @@ function Account() {
         setVerificationEmail(
           data.preferred_email || currentUser.email || '',
         )
+        setVerificationCode('')
         setLoadingData(false)
       },
       (err) => {
@@ -181,10 +188,11 @@ function Account() {
 
   const handleRequestCode = async () => {
     const email = verificationEmail.trim().toLowerCase()
-    if (!email.endsWith('@ox.ac.uk')) {
+    const oxfordEmailRe = /@([A-Za-z0-9-]+\.)*ox\.ac\.uk$/i
+    if (!oxfordEmailRe.test(email)) {
       setStatus({
         type: 'danger',
-        message: 'Please enter a valid @ox.ac.uk email.',
+        message: 'Please enter a valid Oxford email address.',
       })
       return
     }
@@ -205,6 +213,36 @@ function Account() {
       })
     } finally {
       setRequestingCode(false)
+    }
+  }
+
+  const handleVerifyCode = async () => {
+    const code = verificationCode.trim()
+    if (!code) {
+      setStatus({
+        type: 'danger',
+        message: 'Please enter the verification code.',
+      })
+      return
+    }
+
+    try {
+      setVerifyingCode(true)
+      setStatus({ type: 'info', message: 'Verifying code...' })
+      const verifyOxfordCode = httpsCallable(functions, 'verifyOxfordCode')
+      await verifyOxfordCode({ code })
+      setStatus({
+        type: 'success',
+        message: 'Email verified successfully.',
+      })
+      setVerificationCode('')
+    } catch (err) {
+      setStatus({
+        type: 'danger',
+        message: err?.message || 'Failed to verify code.',
+      })
+    } finally {
+      setVerifyingCode(false)
     }
   }
 
@@ -348,6 +386,27 @@ function Account() {
                 disabled={requestingCode}
               >
                 {requestingCode ? 'Sending...' : 'Send verification code'}
+              </button>
+              <div>
+                <label htmlFor="oxfordCode" className="form-label">
+                  Verification code
+                </label>
+                <input
+                  id="oxfordCode"
+                  type="text"
+                  className="form-control"
+                  placeholder="Enter 6-digit code"
+                  value={verificationCode}
+                  onChange={(event) => setVerificationCode(event.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                className="btn btn-dark"
+                onClick={handleVerifyCode}
+                disabled={verifyingCode}
+              >
+                {verifyingCode ? 'Verifying...' : 'Verify code'}
               </button>
             </div>
           </div>

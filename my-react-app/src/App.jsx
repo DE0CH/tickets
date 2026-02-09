@@ -12,14 +12,16 @@ function App() {
   return (
     <main className="min-vh-100 bg-light">
       <div className="container py-5">
-        <nav className="mb-5">
-          <div className="nav nav-pills justify-content-center gap-2">
-            <Link className="nav-link" to="/">
-              Home
+        <nav className="navbar navbar-expand-sm navbar-light bg-white rounded-3 shadow-sm mb-5 px-3">
+          <div className="container-fluid px-0">
+            <Link className="navbar-brand fw-semibold text-dark" to="/">
+              Tickets
             </Link>
-            <Link className="nav-link" to="/account">
-              Account
-            </Link>
+            <div className="ms-auto d-flex align-items-center gap-2">
+              <Link className="btn btn-outline-dark btn-sm" to="/account">
+                Account
+              </Link>
+            </div>
           </div>
         </nav>
 
