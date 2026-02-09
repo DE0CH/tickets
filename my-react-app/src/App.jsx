@@ -1,5 +1,8 @@
 import { Link, Route, Routes } from 'react-router-dom'
 import Account from './pages/Account.jsx'
+import AskDetail from './pages/AskDetail.jsx'
+import Bid from './pages/Bid.jsx'
+import BidDetail from './pages/BidDetail.jsx'
 import Event from './pages/Event.jsx'
 import Home from './pages/Home.jsx'
 import Sell from './pages/Sell.jsx'
@@ -22,8 +25,11 @@ function App() {
 
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/asks/:askId" element={<AskDetail />} />
+          <Route path="/bids/:bidId" element={<BidDetail />} />
           <Route path="/events/:eventId" element={<Event />} />
           <Route path="/events/:eventId/sell" element={<Sell />} />
+          <Route path="/events/:eventId/bid" element={<Bid />} />
           <Route path="/account" element={<Account />} />
         </Routes>
       </div>

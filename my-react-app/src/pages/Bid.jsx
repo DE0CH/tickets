@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore'
 import { auth, db } from '../firebase.js'
 
-function Sell() {
+function Bid() {
   const { eventId } = useParams()
   const navigate = useNavigate()
   const [price, setPrice] = useState('')
@@ -52,23 +52,23 @@ function Sell() {
 
     try {
       setSubmitting(true)
-      setStatus({ type: 'info', message: 'Submitting ask...' })
+      setStatus({ type: 'info', message: 'Submitting bid...' })
 
-      const asksRef = collection(db, 'ask')
-      await addDoc(asksRef, {
+      const bidsRef = collection(db, 'bid')
+      await addDoc(bidsRef, {
         event_id: eventId,
         user_id: userId,
         price: numericPrice,
         created_at: serverTimestamp(),
       })
 
-      setStatus({ type: 'success', message: 'Ask submitted.' })
+      setStatus({ type: 'success', message: 'Bid submitted.' })
       setPrice('')
       navigate(`/events/${eventId}`)
     } catch (err) {
       setStatus({
         type: 'danger',
-        message: err?.message || 'Failed to submit ask.',
+        message: err?.message || 'Failed to submit bid.',
       })
     } finally {
       setSubmitting(false)
@@ -77,13 +77,10 @@ function Sell() {
 
   return (
     <section className="mx-auto" style={{ maxWidth: '520px' }}>
-      <h1 className="h3 fw-semibold text-dark mb-3 text-center">Sell Ticket</h1>
+      <h1 className="h3 fw-semibold text-dark mb-3 text-center">Place Bid</h1>
       <p className="text-secondary text-center mb-4">
-        Post an ask for{' '}
-        <span className="fw-semibold">
-          {eventTitle || 'this event'}
-        </span>
-        .
+        Place a bid for{' '}
+        <span className="fw-semibold">{eventTitle || 'this event'}</span>.
       </p>
 
       {status.message && (
@@ -114,11 +111,11 @@ function Sell() {
           className="btn btn-dark"
           disabled={submitting}
         >
-          {submitting ? 'Submitting...' : 'Post Ask'}
+          {submitting ? 'Submitting...' : 'Place Bid'}
         </button>
       </form>
     </section>
   )
 }
 
-export default Sell
+export default Bid
