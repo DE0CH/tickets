@@ -10,7 +10,7 @@ import https from "https";
 
 admin.initializeApp();
 
-const MAIL_API_URL = defineSecret("OX_MAIL_API_URL");
+const MAIL_API_ENDPOINT = defineSecret("OX_MAIL_API_ENDPOINT");
 const MAIL_API_TOKEN = defineSecret("OX_MAIL_API_TOKEN");
 const OX_EMAIL_RE = /@([A-Za-z0-9-]+\.)*ox\.ac\.uk$/i;
 
@@ -21,14 +21,14 @@ type MailApiResponse = {
 
 const requestMailCode = (email: string) =>
   new Promise<MailApiResponse>((resolve, reject) => {
-    const mailApiUrl = MAIL_API_URL.value();
+    const mailApiEndpoint = MAIL_API_ENDPOINT.value();
     const mailApiToken = MAIL_API_TOKEN.value();
-    if (!mailApiUrl || !mailApiToken) {
-      reject(new Error("Missing OX_MAIL_API_URL or OX_MAIL_API_TOKEN."));
+    if (!mailApiEndpoint || !mailApiToken) {
+      reject(new Error("Missing OX_MAIL_API_ENDPOINT or OX_MAIL_API_TOKEN."));
       return;
     }
 
-    const url = new URL("/send_code", mailApiUrl);
+    const url = new URL("/send_code", mailApiEndpoint);
     const body = JSON.stringify({email});
     const options: https.RequestOptions = {
       method: "POST",
@@ -65,7 +65,7 @@ const requestMailCode = (email: string) =>
 
 export const requestOxfordCode = onCall(
   {
-    secrets: [MAIL_API_URL, MAIL_API_TOKEN],
+    secrets: [MAIL_API_ENDPOINT, MAIL_API_TOKEN],
   },
   async (request: CallableRequest<{ email?: string }>) => {
     if (!request.auth) {

@@ -34,6 +34,17 @@ function App() {
           <Route path="/events/:eventId/bid" element={<Bid />} />
           <Route path="/account" element={<Account />} />
         </Routes>
+
+        <footer className="mt-5 py-4 text-center text-muted small border-top">
+          <a
+            href="https://github.com/DE0CH/tickets"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-decoration-none text-muted"
+          >
+            View source on GitHub
+          </a>
+        </footer>
       </div>
     </main>
   )

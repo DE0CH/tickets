@@ -28,6 +28,7 @@ function Account() {
   })
   const [verificationEmail, setVerificationEmail] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
+  const [verificationStatus, setVerificationStatus] = useState({ type: '', message: '' })
   const [saving, setSaving] = useState(false)
   const [requestingCode, setRequestingCode] = useState(false)
   const [verifyingCode, setVerifyingCode] = useState(false)
@@ -35,6 +36,7 @@ function Account() {
   const [bids, setBids] = useState([])
   const [loadingData, setLoadingData] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
+  const [oxfordEmailVerified, setOxfordEmailVerified] = useState(false)
 
   const providers = useMemo(
     () => ({
@@ -92,6 +94,7 @@ function Account() {
       })
       setVerificationEmail('')
       setVerificationCode('')
+      setOxfordEmailVerified(false)
       setAsks([])
       setBids([])
       return
@@ -120,9 +123,8 @@ function Account() {
           preferredPhone: data.preferred_phone || '',
           preferredWhatsapp: data.preferred_whatsapp || '',
         })
-        setVerificationEmail(
-          data.preferred_email || currentUser.email || '',
-        )
+        setOxfordEmailVerified(Boolean(data.oxford_email_verified))
+        setVerificationEmail('')
         setVerificationCode('')
         setLoadingData(false)
       },
@@ -194,7 +196,7 @@ function Account() {
     const email = verificationEmail.trim().toLowerCase()
     const oxfordEmailRe = /@([A-Za-z0-9-]+\.)*ox\.ac\.uk$/i
     if (!oxfordEmailRe.test(email)) {
-      setStatus({
+      setVerificationStatus({
         type: 'danger',
         message: 'Please enter a valid Oxford email address.',
       })
@@ -203,15 +205,15 @@ function Account() {
 
     try {
       setRequestingCode(true)
-      setStatus({ type: 'info', message: 'Sending verification code...' })
+      setVerificationStatus({ type: 'info', message: 'Sending verification code...' })
       const requestOxfordCode = httpsCallable(functions, 'requestOxfordCode')
       await requestOxfordCode({ email })
-      setStatus({
+      setVerificationStatus({
         type: 'success',
         message: 'Verification code sent. Check your email.',
       })
     } catch (err) {
-      setStatus({
+      setVerificationStatus({
         type: 'danger',
         message: err?.message || 'Failed to send verification code.',
       })
@@ -223,7 +225,7 @@ function Account() {
   const handleVerifyCode = async () => {
     const code = verificationCode.trim()
     if (!code) {
-      setStatus({
+      setVerificationStatus({
         type: 'danger',
         message: 'Please enter the verification code.',
       })
@@ -232,16 +234,16 @@ function Account() {
 
     try {
       setVerifyingCode(true)
-      setStatus({ type: 'info', message: 'Verifying code...' })
+      setVerificationStatus({ type: 'info', message: 'Verifying code...' })
       const verifyOxfordCode = httpsCallable(functions, 'verifyOxfordCode')
       await verifyOxfordCode({ code })
-      setStatus({
+      setVerificationStatus({
         type: 'success',
         message: 'Email verified successfully.',
       })
       setVerificationCode('')
     } catch (err) {
-      setStatus({
+      setVerificationStatus({
         type: 'danger',
         message: err?.message || 'Failed to verify code.',
       })
@@ -373,50 +375,61 @@ function Account() {
             <h2 className="h6 text-uppercase text-secondary mb-3">
               Oxford email verification
             </h2>
-            <div className="d-grid gap-3">
-              <div>
-                <label htmlFor="oxfordEmail" className="form-label">
-                  Oxford email
-                </label>
-                <input
-                  id="oxfordEmail"
-                  type="email"
-                  className="form-control"
-                  placeholder="your.name@ox.ac.uk"
-                  value={verificationEmail}
-                  onChange={(event) => setVerificationEmail(event.target.value)}
-                />
-              </div>
-              <button
-                type="button"
-                className="btn btn-outline-dark"
-                onClick={handleRequestCode}
-                disabled={requestingCode}
-              >
-                {requestingCode ? 'Sending...' : 'Send verification code'}
-              </button>
-              <div>
-                <label htmlFor="oxfordCode" className="form-label">
-                  Verification code
-                </label>
-                <input
-                  id="oxfordCode"
-                  type="text"
-                  className="form-control"
-                  placeholder="Enter 6-digit code"
-                  value={verificationCode}
-                  onChange={(event) => setVerificationCode(event.target.value)}
-                />
-              </div>
-              <button
-                type="button"
-                className="btn btn-dark"
-                onClick={handleVerifyCode}
-                disabled={verifyingCode}
-              >
-                {verifyingCode ? 'Verifying...' : 'Verify code'}
-              </button>
-            </div>
+            {oxfordEmailVerified ? (
+              <p className="text-success mb-0 fw-medium">Verified</p>
+            ) : (
+              <>
+                {verificationStatus.message && (
+                  <div className={`alert alert-${verificationStatus.type} mb-3`} role="alert">
+                    {verificationStatus.message}
+                  </div>
+                )}
+                <div className="d-grid gap-3">
+                  <div>
+                    <label htmlFor="oxfordEmail" className="form-label">
+                      Oxford email
+                    </label>
+                    <input
+                      id="oxfordEmail"
+                      type="email"
+                      className="form-control"
+                      placeholder="your.name@ox.ac.uk"
+                      value={verificationEmail}
+                      onChange={(event) => setVerificationEmail(event.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-outline-dark"
+                    onClick={handleRequestCode}
+                    disabled={requestingCode}
+                  >
+                    {requestingCode ? 'Sending...' : 'Send verification code'}
+                  </button>
+                  <div>
+                    <label htmlFor="oxfordCode" className="form-label">
+                      Verification code
+                    </label>
+                    <input
+                      id="oxfordCode"
+                      type="text"
+                      className="form-control"
+                      placeholder="Enter 6-digit code"
+                      value={verificationCode}
+                      onChange={(event) => setVerificationCode(event.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-dark"
+                    onClick={handleVerifyCode}
+                    disabled={verifyingCode}
+                  >
+                    {verifyingCode ? 'Verifying...' : 'Verify code'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           <ActivityTable
