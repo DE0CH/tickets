@@ -12,6 +12,8 @@ function AskDetail() {
       historyKey="ask_id"
       title="Ask"
       personLabel="Seller"
+      successStatus="sold"
+      successLabel="Sold"
     />
   )
 }

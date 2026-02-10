@@ -55,11 +55,20 @@ function Sell() {
       setStatus({ type: 'info', message: 'Submitting ask...' })
 
       const asksRef = collection(db, 'ask')
-      await addDoc(asksRef, {
+      const askDoc = await addDoc(asksRef, {
         event_id: eventId,
         user_id: userId,
         price: numericPrice,
+        status: 'active',
         created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+      })
+      await addDoc(collection(db, 'ask_history'), {
+        ask_id: askDoc.id,
+        event_id: eventId,
+        user_id: userId,
+        price: numericPrice,
+        changed_at: serverTimestamp(),
       })
 
       setStatus({ type: 'success', message: 'Ask submitted.' })

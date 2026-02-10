@@ -55,11 +55,20 @@ function Bid() {
       setStatus({ type: 'info', message: 'Submitting bid...' })
 
       const bidsRef = collection(db, 'bid')
-      await addDoc(bidsRef, {
+      const bidDoc = await addDoc(bidsRef, {
         event_id: eventId,
         user_id: userId,
         price: numericPrice,
+        status: 'active',
         created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+      })
+      await addDoc(collection(db, 'bid_history'), {
+        bid_id: bidDoc.id,
+        event_id: eventId,
+        user_id: userId,
+        price: numericPrice,
+        changed_at: serverTimestamp(),
       })
 
       setStatus({ type: 'success', message: 'Bid submitted.' })

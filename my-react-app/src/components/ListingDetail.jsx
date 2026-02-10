@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
@@ -21,6 +22,8 @@ function ListingDetail({
   title,
   personLabel,
   historyLogLabel,
+  successStatus = 'sold',
+  successLabel = 'Sold',
 }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [item, setItem] = useState(null)
@@ -31,6 +34,7 @@ function ListingDetail({
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [newPrice, setNewPrice] = useState('')
   const [updatingPrice, setUpdatingPrice] = useState(false)
+  const [confirmAction, setConfirmAction] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -135,7 +139,9 @@ function ListingDetail({
   }, [itemRef, title, viewerVerified])
 
   useEffect(() => {
-    if (!itemId) return
+    if (!itemId) {
+      return
+    }
     const historyQuery = query(
       collection(db, historyCollection),
       where(historyKey, '==', itemId),
@@ -154,7 +160,8 @@ function ListingDetail({
         setHistory(entries)
         setLoadingHistory(false)
       },
-      () => {
+      (err) => {
+        console.log(`${title} history: error`, err)
         setLoadingHistory(false)
       },
     )
@@ -177,7 +184,6 @@ function ListingDetail({
     try {
       setUpdatingPrice(true)
       const itemDocRef = doc(db, itemCollection, item.id)
-      const oldPrice = item.price ?? null
       await updateDoc(itemDocRef, {
         price: numericPrice,
         updated_at: serverTimestamp(),
@@ -186,8 +192,7 @@ function ListingDetail({
         [historyKey]: item.id,
         event_id: item.event_id ?? null,
         user_id: item.user_id ?? null,
-        old_price: oldPrice,
-        new_price: numericPrice,
+        price: numericPrice,
         changed_at: serverTimestamp(),
       })
       setError('')
@@ -196,6 +201,50 @@ function ListingDetail({
     } finally {
       setUpdatingPrice(false)
     }
+  }
+
+  const handleUpdateStatus = async (status) => {
+    if (!item) return
+    if (!currentUser || item.user_id !== currentUser.uid) {
+      setError(`You can only update your own ${title.toLowerCase()}.`)
+      return
+    }
+
+    try {
+      setUpdatingPrice(true)
+      const itemDocRef = doc(db, itemCollection, item.id)
+      if (status === 'deleted') {
+        await deleteDoc(itemDocRef)
+      } else {
+        await updateDoc(itemDocRef, {
+          status,
+          updated_at: serverTimestamp(),
+        })
+      }
+      setError('')
+    } catch (err) {
+      setError(err?.message || 'Failed to update status.')
+    } finally {
+      setUpdatingPrice(false)
+    }
+  }
+
+  const openConfirm = (status) => {
+    const message =
+      status === 'deleted'
+        ? `Delete this ${title.toLowerCase()}? This will hide it from listings.`
+        : `Mark this ${title.toLowerCase()} as ${successLabel.toLowerCase()}?`
+    setConfirmAction({ status, message })
+  }
+
+  const closeConfirm = () => {
+    setConfirmAction(null)
+  }
+
+  const confirmStatusUpdate = async () => {
+    if (!confirmAction) return
+    await handleUpdateStatus(confirmAction.status)
+    closeConfirm()
   }
 
   const formatTimestamp = (value) => {
@@ -226,6 +275,11 @@ function ListingDetail({
             <h2 className="h6 text-uppercase text-secondary mb-3">
               {title} details
             </h2>
+            {item.status === successStatus && (
+              <div className="alert alert-success py-2" role="alert">
+                {successLabel}
+              </div>
+            )}
             <div className="row g-2">
               <div className="col-12 col-md-6">
                 <div className="text-secondary small">Event</div>
@@ -282,7 +336,7 @@ function ListingDetail({
           {currentUser && item?.user_id === currentUser.uid && (
             <div className="rounded border bg-white p-4 shadow-sm">
               <h2 className="h6 text-uppercase text-secondary mb-3">
-                Update price
+                Update listing
               </h2>
               <form className="d-grid gap-3" onSubmit={handleUpdatePrice}>
                 <div>
@@ -307,6 +361,22 @@ function ListingDetail({
                   {updatingPrice ? 'Updating...' : 'Update price'}
                 </button>
               </form>
+              <div className="d-flex flex-wrap gap-2 mt-3">
+                <button
+                  type="button"
+                  className="btn btn-outline-danger"
+                  onClick={() => openConfirm('deleted')}
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-success"
+                  onClick={() => openConfirm(successStatus)}
+                >
+                  {successLabel}
+                </button>
+              </div>
             </div>
           )}
 
@@ -323,16 +393,14 @@ function ListingDetail({
                 <table className="table table-striped align-middle mb-0">
                   <thead>
                     <tr>
-                      <th scope="col">From</th>
-                      <th scope="col">To</th>
+                      <th scope="col">Price</th>
                       <th scope="col">Changed</th>
                     </tr>
                   </thead>
                   <tbody>
                     {history.map((entry) => (
                       <tr key={entry.id}>
-                        <td>{entry.old_price ?? '—'}</td>
-                        <td>{entry.new_price ?? '—'}</td>
+                        <td>{entry.price ?? '—'}</td>
                         <td>{formatTimestamp(entry.changed_at)}</td>
                       </tr>
                     ))}
@@ -340,6 +408,34 @@ function ListingDetail({
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {confirmAction && (
+        <div className="modal-backdrop-custom">
+          <div className="modal-card">
+            <h3 className="h6 text-uppercase text-secondary mb-2">
+              Confirm action
+            </h3>
+            <p className="mb-4">{confirmAction.message}</p>
+            <div className="d-flex justify-content-end gap-2">
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={closeConfirm}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-dark btn-sm"
+                onClick={confirmStatusUpdate}
+                disabled={updatingPrice}
+              >
+                {updatingPrice ? 'Working...' : 'Confirm'}
+              </button>
+            </div>
           </div>
         </div>
       )}

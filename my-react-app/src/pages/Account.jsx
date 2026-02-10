@@ -100,10 +100,12 @@ function Account() {
     const asksQuery = query(
       collection(db, 'ask'),
       where('user_id', '==', currentUser.uid),
+      where('status', '==', 'active'),
     )
     const bidsQuery = query(
       collection(db, 'bid'),
       where('user_id', '==', currentUser.uid),
+      where('status', '==', 'active'),
     )
 
     const unsubscribeUser = onSnapshot(

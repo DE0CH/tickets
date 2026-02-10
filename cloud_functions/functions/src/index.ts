@@ -72,12 +72,6 @@ export const requestOxfordCode = onCall(
       throw new HttpsError("unauthenticated", "Please log in first.");
     }
 
-    const allowedEmail = "chendeyao000@gmail.com";
-    const requesterEmail = request.auth.token.email ?? "";
-    if (requesterEmail.toLowerCase() !== allowedEmail) {
-      throw new HttpsError("permission-denied", "Not authorized.");
-    }
-
     const oxEmail = request.data?.email ?? "";
     const uid = request.auth.uid;
 
@@ -114,12 +108,6 @@ export const verifyOxfordCode = onCall(
   async (request: CallableRequest<{ code?: string }>) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Please log in first.");
-    }
-
-    const allowedEmail = "chendeyao000@gmail.com";
-    const requesterEmail = request.auth.token.email ?? "";
-    if (requesterEmail.toLowerCase() !== allowedEmail) {
-      throw new HttpsError("permission-denied", "Not authorized.");
     }
 
     const code = request.data?.code?.trim() ?? "";

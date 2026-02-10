@@ -9,9 +9,13 @@ function Event() {
   const [eventData, setEventData] = useState(null)
   const [asks, setAsks] = useState([])
   const [bids, setBids] = useState([])
+  const [soldAsks, setSoldAsks] = useState([])
+  const [filledBids, setFilledBids] = useState([])
   const [loadingEvent, setLoadingEvent] = useState(true)
   const [loadingAsks, setLoadingAsks] = useState(true)
   const [loadingBids, setLoadingBids] = useState(true)
+  const [loadingSoldAsks, setLoadingSoldAsks] = useState(true)
+  const [loadingFilledBids, setLoadingFilledBids] = useState(true)
   const [error, setError] = useState('')
 
   const formatTimestamp = (value) => {
@@ -32,30 +36,64 @@ function Event() {
   const asksQuery = useMemo(
     () =>
       eventId
-        ? query(collection(db, 'ask'), where('event_id', '==', eventId))
+        ? query(
+            collection(db, 'ask'),
+            where('event_id', '==', eventId),
+            where('status', '==', 'active'),
+          )
         : null,
     [eventId],
   )
   const bidsQuery = useMemo(
     () =>
       eventId
-        ? query(collection(db, 'bid'), where('event_id', '==', eventId))
+        ? query(
+            collection(db, 'bid'),
+            where('event_id', '==', eventId),
+            where('status', '==', 'active'),
+          )
+        : null,
+    [eventId],
+  )
+  const soldAsksQuery = useMemo(
+    () =>
+      eventId
+        ? query(
+            collection(db, 'ask'),
+            where('event_id', '==', eventId),
+            where('status', '==', 'sold'),
+          )
+        : null,
+    [eventId],
+  )
+  const filledBidsQuery = useMemo(
+    () =>
+      eventId
+        ? query(
+            collection(db, 'bid'),
+            where('event_id', '==', eventId),
+            where('status', '==', 'filled'),
+          )
         : null,
     [eventId],
   )
 
   useEffect(() => {
-    if (!eventRef || !asksQuery || !bidsQuery) {
+    if (!eventRef || !asksQuery || !bidsQuery || !soldAsksQuery || !filledBidsQuery) {
       setError('Missing event id.')
       setLoadingEvent(false)
       setLoadingAsks(false)
       setLoadingBids(false)
+      setLoadingSoldAsks(false)
+      setLoadingFilledBids(false)
       return
     }
 
     setLoadingEvent(true)
     setLoadingAsks(true)
     setLoadingBids(true)
+    setLoadingSoldAsks(true)
+    setLoadingFilledBids(true)
 
     const unsubscribeEvent = onSnapshot(
       eventRef,
@@ -107,25 +145,72 @@ function Event() {
       },
     )
 
+    const unsubscribeSoldAsks = onSnapshot(
+      soldAsksQuery,
+      (asksSnap) => {
+        const asksData = asksSnap.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }))
+        setSoldAsks(asksData)
+        setLoadingSoldAsks(false)
+      },
+      (err) => {
+        setError(err?.message || 'Failed to load sold asks.')
+        setLoadingSoldAsks(false)
+      },
+    )
+
+    const unsubscribeFilledBids = onSnapshot(
+      filledBidsQuery,
+      (bidsSnap) => {
+        const bidsData = bidsSnap.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }))
+        setFilledBids(bidsData)
+        setLoadingFilledBids(false)
+      },
+      (err) => {
+        setError(err?.message || 'Failed to load filled bids.')
+        setLoadingFilledBids(false)
+      },
+    )
+
     return () => {
       unsubscribeEvent()
       unsubscribeAsks()
       unsubscribeBids()
+      unsubscribeSoldAsks()
+      unsubscribeFilledBids()
     }
-  }, [eventRef, asksQuery, bidsQuery])
+  }, [eventRef, asksQuery, bidsQuery, soldAsksQuery, filledBidsQuery])
 
   return (
     <section className="mx-auto" style={{ maxWidth: '720px' }}>
       <h1 className="h3 fw-semibold text-dark mb-3">Event</h1>
 
-      {(loadingEvent || loadingAsks || loadingBids) && (
+      {(loadingEvent ||
+        loadingAsks ||
+        loadingBids ||
+        loadingSoldAsks ||
+        loadingFilledBids) && (
         <p className="text-secondary">Loading event...</p>
       )}
-      {!loadingEvent && !loadingAsks && !loadingBids && error && (
-        <p className="text-danger">{error}</p>
-      )}
+      {!loadingEvent &&
+        !loadingAsks &&
+        !loadingBids &&
+        !loadingSoldAsks &&
+        !loadingFilledBids &&
+        error && <p className="text-danger">{error}</p>}
 
-      {!loadingEvent && !loadingAsks && !loadingBids && !error && eventData && (
+      {!loadingEvent &&
+        !loadingAsks &&
+        !loadingBids &&
+        !loadingSoldAsks &&
+        !loadingFilledBids &&
+        !error &&
+        eventData && (
         <div className="mb-4 rounded border bg-white p-4 shadow-sm">
           <h2 className="h5 mb-2">{eventData.title || 'Untitled event'}</h2>
           <p className="text-secondary mb-0">
@@ -134,7 +219,12 @@ function Event() {
         </div>
       )}
 
-      {!loadingEvent && !loadingAsks && !loadingBids && !error && (
+      {!loadingEvent &&
+        !loadingAsks &&
+        !loadingBids &&
+        !loadingSoldAsks &&
+        !loadingFilledBids &&
+        !error && (
         <div className="d-flex flex-column gap-3">
           <div className="d-flex flex-wrap gap-2">
             <Link
@@ -162,6 +252,22 @@ function Event() {
             title="Bids"
             items={bids}
             emptyText="No bids yet."
+            formatTimestamp={formatTimestamp}
+            showEvent={false}
+            detailPath="/bids"
+          />
+          <ActivityTable
+            title="Completed asks"
+            items={soldAsks}
+            emptyText="No completed asks yet."
+            formatTimestamp={formatTimestamp}
+            showEvent={false}
+            detailPath="/asks"
+          />
+          <ActivityTable
+            title="Completed bids"
+            items={filledBids}
+            emptyText="No completed bids yet."
             formatTimestamp={formatTimestamp}
             showEvent={false}
             detailPath="/bids"

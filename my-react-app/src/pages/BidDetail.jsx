@@ -13,6 +13,8 @@ function BidDetail() {
       title="Bid"
       personLabel="Buyer"
       historyLogLabel="Bid"
+      successStatus="filled"
+      successLabel="Filled"
     />
   )
 }
