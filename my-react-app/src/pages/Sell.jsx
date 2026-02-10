@@ -8,6 +8,7 @@ import {
   onSnapshot,
   serverTimestamp,
 } from 'firebase/firestore'
+import { onAuthStateChanged } from 'firebase/auth'
 import { auth, db } from '../firebase.js'
 
 function Sell() {
@@ -16,6 +17,7 @@ function Sell() {
   const [price, setPrice] = useState('')
   const [eventTitle, setEventTitle] = useState('')
   const [status, setStatus] = useState({ type: '', message: '' })
+  const [currentUser, setCurrentUser] = useState(null)
   const [isVerified, setIsVerified] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -34,20 +36,27 @@ function Sell() {
   }, [eventId])
 
   useEffect(() => {
-    const userId = auth.currentUser?.uid
-    if (!userId) {
-      setIsVerified(false)
-      return
+    let unsubSnapshot = null
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user || null)
+      if (unsubSnapshot) unsubSnapshot()
+      if (!user) {
+        setIsVerified(false)
+        return
+      }
+      unsubSnapshot = onSnapshot(
+        doc(db, 'users', user.uid),
+        (snap) => {
+          const data = snap.exists() ? snap.data() : {}
+          setIsVerified(Boolean(data.oxford_email_verified))
+        },
+        () => setIsVerified(false),
+      )
+    })
+    return () => {
+      unsubAuth()
+      if (unsubSnapshot) unsubSnapshot()
     }
-    const unsubscribe = onSnapshot(
-      doc(db, 'users', userId),
-      (snap) => {
-        const data = snap.exists() ? snap.data() : {}
-        setIsVerified(Boolean(data.oxford_email_verified))
-      },
-      () => setIsVerified(false),
-    )
-    return () => unsubscribe()
   }, [])
 
   const handleSubmit = async (event) => {
@@ -125,7 +134,9 @@ function Sell() {
 
       {isVerified === false && (
         <div className="alert alert-warning text-center" role="alert">
-          Please log in and verify your Oxford email to post an ask.
+          {currentUser
+            ? 'Verify your Oxford email to post an ask.'
+            : 'Please log in and verify your Oxford email to post an ask.'}
         </div>
       )}
 
