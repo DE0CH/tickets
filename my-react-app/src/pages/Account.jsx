@@ -331,7 +331,7 @@ function Account() {
               </div>
               <div>
                 <label htmlFor="preferredEmail" className="form-label">
-                  Preferred email
+                  Email
                 </label>
                 <input
                   id="preferredEmail"
@@ -343,7 +343,7 @@ function Account() {
               </div>
               <div>
                 <label htmlFor="preferredPhone" className="form-label">
-                  Preferred phone
+                  Phone number
                 </label>
                 <input
                   id="preferredPhone"
@@ -355,7 +355,7 @@ function Account() {
               </div>
               <div>
                 <label htmlFor="preferredWhatsapp" className="form-label">
-                  Preferred WhatsApp number
+                  WhatsApp
                 </label>
                 <input
                   id="preferredWhatsapp"

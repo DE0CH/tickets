@@ -315,16 +315,16 @@ function ListingDetail({
                   <div>{user.name || '—'}</div>
                 </div>
                 <div className="col-12 col-md-6">
-                  <div className="text-secondary small">Preferred email</div>
+                  <div className="text-secondary small">Email</div>
                   <div>{user.preferred_email || '—'}</div>
                 </div>
                 <div className="col-12 col-md-6">
-                  <div className="text-secondary small">Preferred phone</div>
+                  <div className="text-secondary small">Phone number</div>
                   <div>{user.preferred_phone || '—'}</div>
                 </div>
                 <div className="col-12 col-md-6">
                   <div className="text-secondary small">
-                    Preferred WhatsApp
+                    WhatsApp
                   </div>
                   <div>{user.preferred_whatsapp || '—'}</div>
                 </div>
