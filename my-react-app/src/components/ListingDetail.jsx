@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, db } from '../firebase.js'
+import { formatPrice } from '../utils/format.js'
 
 function ListingDetail({
   itemId,
@@ -287,7 +288,7 @@ function ListingDetail({
               </div>
               <div className="col-12 col-md-6">
                 <div className="text-secondary small">Price</div>
-                <div>{item.price ?? '—'}</div>
+                <div>{formatPrice(item.price)}</div>
               </div>
               <div className="col-12">
                 <div className="text-secondary small">Date listed</div>
@@ -302,8 +303,9 @@ function ListingDetail({
             </h2>
             {viewerVerified === false && (
               <p className="text-secondary mb-0">
-                Verify your Oxford email to view {personLabel.toLowerCase()}{' '}
-                information.
+                {currentUser
+                  ? `Verify your Oxford email to view ${personLabel.toLowerCase()} information.`
+                  : `Please log in and verify your Oxford email to view ${personLabel.toLowerCase()} information.`}
               </p>
             )}
             {viewerVerified && user ? (
@@ -400,7 +402,7 @@ function ListingDetail({
                   <tbody>
                     {history.map((entry) => (
                       <tr key={entry.id}>
-                        <td>{entry.price ?? '—'}</td>
+                        <td>{formatPrice(entry.price)}</td>
                         <td>{formatTimestamp(entry.changed_at)}</td>
                       </tr>
                     ))}

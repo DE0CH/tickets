@@ -34,6 +34,7 @@ function Account() {
   const [asks, setAsks] = useState([])
   const [bids, setBids] = useState([])
   const [loadingData, setLoadingData] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
 
   const providers = useMemo(
     () => ({
@@ -76,6 +77,7 @@ function Account() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user)
       setStatus({ type: '', message: '' })
+      setAuthChecked(true)
     })
     return () => unsubscribe()
   }, [])
@@ -264,7 +266,11 @@ function Account() {
     <section className="mx-auto" style={{ maxWidth: '720px' }}>
       <h1 className="h3 fw-semibold text-dark mb-3 text-center">Account</h1>
 
-      {!currentUser && (
+      {!authChecked && (
+        <p className="text-secondary text-center">Loading account...</p>
+      )}
+
+      {authChecked && !currentUser && (
         <>
           <p className="text-secondary text-center mb-4">
             Continue with Google to access your account.

@@ -5,6 +5,7 @@ import {
   collection,
   doc,
   getDoc,
+  onSnapshot,
   serverTimestamp,
 } from 'firebase/firestore'
 import { auth, db } from '../firebase.js'
@@ -15,6 +16,7 @@ function Bid() {
   const [price, setPrice] = useState('')
   const [eventTitle, setEventTitle] = useState('')
   const [status, setStatus] = useState({ type: '', message: '' })
+  const [isVerified, setIsVerified] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -30,6 +32,23 @@ function Bid() {
     }
     fetchEvent()
   }, [eventId])
+
+  useEffect(() => {
+    const userId = auth.currentUser?.uid
+    if (!userId) {
+      setIsVerified(false)
+      return
+    }
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', userId),
+      (snap) => {
+        const data = snap.exists() ? snap.data() : {}
+        setIsVerified(Boolean(data.oxford_email_verified))
+      },
+      () => setIsVerified(false),
+    )
+    return () => unsubscribe()
+  }, [])
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -47,6 +66,9 @@ function Bid() {
     const userId = auth.currentUser?.uid
     if (!userId) {
       setStatus({ type: 'danger', message: 'Please sign in first.' })
+      return
+    }
+    if (!isVerified) {
       return
     }
 
@@ -98,31 +120,39 @@ function Bid() {
         </div>
       )}
 
-      <form className="d-grid gap-3" onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="price" className="form-label">
-            Price
-          </label>
-          <input
-            id="price"
-            type="number"
-            min="0"
-            step="0.01"
-            className="form-control"
-            placeholder="Enter price"
-            value={price}
-            onChange={(event) => setPrice(event.target.value)}
-            required
-          />
+      {isVerified === false && (
+        <div className="alert alert-warning text-center" role="alert">
+          Please log in and verify your Oxford email to place a bid.
         </div>
-        <button
-          type="submit"
-          className="btn btn-dark"
-          disabled={submitting}
-        >
-          {submitting ? 'Submitting...' : 'Place Bid'}
-        </button>
-      </form>
+      )}
+
+      {isVerified && (
+        <form className="d-grid gap-3" onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="price" className="form-label">
+              Price
+            </label>
+            <input
+              id="price"
+              type="number"
+              min="0"
+              step="0.01"
+              className="form-control"
+              placeholder="Enter price"
+              value={price}
+              onChange={(event) => setPrice(event.target.value)}
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="btn btn-dark"
+            disabled={submitting}
+          >
+            {submitting ? 'Submitting...' : 'Place Bid'}
+          </button>
+        </form>
+      )}
     </section>
   )
 }

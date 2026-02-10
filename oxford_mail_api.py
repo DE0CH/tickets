@@ -11,6 +11,10 @@ SMTP_PORT = 587
 SENDER_EMAIL = "Deyao Chen <deyao.chen@reuben.ox.ac.uk>"
 OXFORD_EMAIL_RE = re.compile(r"@([A-Za-z0-9-]+\.)*ox\.ac\.uk$", re.IGNORECASE)
 
+EMAIL_HARD_LIMIT = 20
+EMAIL_WARNING_AT = 10
+NOTIFY_EMAIL = "chendeyao000@gmail.com"
+
 
 def send_email(to_email, subject, text_body, html_body=None):
     username = os.environ.get("OX_SMTP_USER", "").strip()
@@ -46,6 +50,7 @@ def is_oxford_email(email):
 
 class MailHandler(BaseHTTPRequestHandler):
     expected_token = None
+    email_sent_count = 0
     def _send_json(self, status_code, payload):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status_code)
@@ -82,12 +87,27 @@ class MailHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "email must end with ox.ac.uk"})
             return
 
+        if MailHandler.email_sent_count >= EMAIL_HARD_LIMIT:
+            self._send_json(503, {"error": "Email send limit reached (20). Restart the service to reset."})
+            return
+
         try:
             code = generate_code()
             subject = "Your Verification Code for Tickets"
             text_body = f"Your verification code is: {code}"
             html_body = f"<strong>{code}</strong> is your verification code. It expires in 15 minutes."
             send_email(to_email, subject, text_body, html_body)
+            MailHandler.email_sent_count += 1
+            if MailHandler.email_sent_count == EMAIL_WARNING_AT:
+                try:
+                    send_email(
+                        NOTIFY_EMAIL,
+                        "Oxford Mail API: please check logs (10 emails sent)",
+                        "The Oxford Mail API has sent 10 emails. Please check the logs.",
+                        "<p>The Oxford Mail API has sent 10 emails. Please check the logs.</p>",
+                    )
+                except Exception:
+                    pass
             self._send_json(200, {"code": code})
         except Exception as exc:
             self._send_json(500, {"error": str(exc)})

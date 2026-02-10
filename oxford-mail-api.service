@@ -1,0 +1,43 @@
+# systemd service for oxford_mail_api.py
+#
+# Install:
+#   sudo cp oxford-mail-api.service /etc/systemd/system/
+#   sudo mkdir -p /etc/oxford-mail-api
+#   sudo nano /etc/oxford-mail-api/env   # add OX_MAIL_API_TOKEN=..., OX_SMTP_USER=..., OX_SMTP_PASS=...
+#   sudo chmod 600 /etc/oxford-mail-api/env
+#   # If not using /opt/oxford-mail-api, edit WorkingDirectory and ExecStart paths in the unit.
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now oxford-mail-api
+#
+# Optional env vars in env: OX_MAIL_HOST (default 0.0.0.0), OX_MAIL_PORT (default 8080)
+
+[Unit]
+Description=Oxford Mail API - verification code HTTP service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+
+# Set to the directory containing oxford_mail_api.py
+WorkingDirectory=/opt/oxford-mail-api
+ExecStart=/usr/bin/python3 -u /opt/oxford-mail-api/oxford_mail_api.py
+
+# Load OX_MAIL_API_TOKEN, OX_SMTP_USER, OX_SMTP_PASS (and optional OX_MAIL_HOST, OX_MAIL_PORT)
+EnvironmentFile=/etc/oxford-mail-api/env
+
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/oxford-mail-api
+ReadOnlyPaths=/etc/oxford-mail-api
+
+[Install]
+WantedBy=multi-user.target

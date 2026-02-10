@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { formatPrice } from '../utils/format.js'
 
 function ActivityTable({
   title,
@@ -102,7 +103,7 @@ function ActivityTable({
                   }}
                 >
                   {showEvent && <td>{item.event_id || '—'}</td>}
-                  <td>{item.price ?? '—'}</td>
+                  <td>{formatPrice(item.price)}</td>
                   <td>{formatTimestamp(item.created_at)}</td>
                 </tr>
               ))}
